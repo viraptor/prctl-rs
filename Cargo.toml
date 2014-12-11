@@ -1,0 +1,17 @@
+[package]
+
+name = "prctl"
+version = "0.0.1"
+authors = ["Stanisław Pitucha <viraptor@gmail.com>"]
+license = "MIT"
+description = """
+This package provides safe abstraction to the linux prctl() interface. Some
+functions may be architecture-specific.
+"""
+
+[features]
+root_test = []
+
+[lib]
+name = "prctl"
+doctest = false
