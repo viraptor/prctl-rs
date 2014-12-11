@@ -512,6 +512,7 @@ fn check_name() {
 }
 
 #[test]
+#[cfg(feature = "not_travis")]
 fn check_no_new_privileges() {
     assert_eq!(Ok(false), get_no_new_privileges());
 }
@@ -552,6 +553,7 @@ fn check_endian() {
 }
 
 #[test]
+#[cfg(feature = "not_travis")]
 fn check_seccomp() {
     assert_eq!(Ok(PrctlSeccomp::SECCOMP_MODE_DISABLED), get_seccomp());
 }
@@ -572,6 +574,7 @@ fn check_perf_events() {
 }
 
 #[test]
+#[cfg(feature = "not_travis")]
 fn check_subreaper() {
     assert_eq!(Ok(()), set_child_subreaper(true));
     assert_eq!(Ok(true), get_child_subreaper());
@@ -580,6 +583,7 @@ fn check_subreaper() {
 }
 
 #[test]
+#[cfg(feature = "not_travis")]
 fn check_thp() {
     let old = get_thp_disable().unwrap();
     assert_eq!(Ok(()), set_thp_disable(true));

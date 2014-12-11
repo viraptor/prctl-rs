@@ -15,6 +15,7 @@ repository = "https://github.com/viraptor/prctl-rs.git"
 
 [features]
 root_test = []
+not_travis = []
 
 [lib]
 name = "prctl"
