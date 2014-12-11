@@ -8,6 +8,10 @@ description = """
 This package provides safe abstraction to the linux prctl() interface. Some
 functions may be architecture-specific.
 """
+keywords = ["linux", "prctl"]
+readme = "README.md"
+homepage = "https://github.com/viraptor/prctl-rs"
+repository = "https://github.com/viraptor/prctl-rs.git"
 
 [features]
 root_test = []
