@@ -17,13 +17,13 @@ use libc::{c_int, c_ulong};
 use std::os::errno;
 use std::num::FromPrimitive;
 
-macro_rules! handle_errno (
+macro_rules! handle_errno {
     ($res:ident) => ({
         if $res == -1 {
             return Err(errno());
         }
     })
-)
+}
 
 #[allow(non_camel_case_types)]
 enum PrctlOption {
