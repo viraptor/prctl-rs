@@ -1,7 +1,7 @@
 [package]
 
 name = "prctl"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Stanisław Pitucha <viraptor@gmail.com>"]
 license = "MIT"
 description = """
