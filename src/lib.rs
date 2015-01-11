@@ -1,4 +1,3 @@
-#![feature(macro_rules)]
 #![cfg(target_os="linux")]
 
 //! Module provides safe abstraction over the prctl interface.
@@ -14,8 +13,12 @@
 
 extern crate libc;
 use libc::{c_int, c_ulong};
+use std::ffi::CString;
 use std::os::errno;
 use std::num::FromPrimitive;
+
+#[cfg(test)]
+use std::path::BytesContainer;
 
 macro_rules! handle_errno {
     ($res:ident) => ({
@@ -71,28 +74,28 @@ enum PrctlOption {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Show,Copy)]
 pub enum PrctlUnalign {
     PR_UNALIGN_NOPRINT = 1,
     PR_UNALIGN_SIGBUS = 2,
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Show,Copy)]
 pub enum PrctlFpemu {
     PR_FPEMU_NOPRINT = 1,
     PR_FPEMU_SIGFPE = 2,
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Show,Copy)]
 pub enum PrctlTiming {
     PR_TIMING_STATISTICAL = 0,
     PR_TIMING_TIMESTAMP = 1,
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Show,Copy)]
 pub enum PrctlEndian {
     PR_ENDIAN_BIG = 0,
     PR_ENDIAN_LITTLE = 1,
@@ -100,7 +103,7 @@ pub enum PrctlEndian {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Show,Copy)]
 pub enum PrctlSeccomp {
     SECCOMP_MODE_DISABLED = 0,
     SECCOMP_MODE_STRICT = 1,
@@ -108,14 +111,14 @@ pub enum PrctlSeccomp {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Show,Copy)]
 pub enum PrctlTsc {
     PR_TSC_ENABLE = 1,
     PR_TSC_SIGSEGV = 2,
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Show,Copy)]
 pub enum PrctlMceKill {
     PR_MCE_KILL_LATE    = 0,
     PR_MCE_KILL_EARLY   = 1,
@@ -123,7 +126,7 @@ pub enum PrctlMceKill {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum PrctlCap {
     CAP_CHOWN            = 0,
     CAP_DAC_OVERRIDE     = 1,
@@ -166,7 +169,7 @@ pub enum PrctlCap {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(PartialEq,Show,Copy)]
+#[derive(PartialEq,Show,Copy)]
 pub enum PrctlSecurebits {
     SECBIT_NOROOT                 = 0x01,
     SECBIT_NOROOT_LOCKED          = 0x02,
@@ -177,7 +180,7 @@ pub enum PrctlSecurebits {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(PartialEq,Show,Copy)]
+#[derive(PartialEq,Show,Copy)]
 pub enum PrctlMM {
     PR_SET_MM_START_CODE  = 1,
     PR_SET_MM_END_CODE    = 2,
@@ -199,7 +202,7 @@ extern {
     fn prctl(option: c_int, arg2: c_ulong, arg3: c_ulong, arg4: c_ulong, arg5: c_ulong) -> c_int;
 }
 
-fn prctl_call(option: PrctlOption) -> Result<(), uint> {
+fn prctl_call(option: PrctlOption) -> Result<(), usize> {
     let res = unsafe {
         prctl(option as c_int, 0, 0, 0, 0)
     };
@@ -207,7 +210,7 @@ fn prctl_call(option: PrctlOption) -> Result<(), uint> {
     Ok(())
 }
 
-fn prctl_get_flag_arg2(option: PrctlOption) -> Result<bool, uint> {
+fn prctl_get_flag_arg2(option: PrctlOption) -> Result<bool, usize> {
     let (res, mode) = unsafe {
         let mut mode: c_int = 0;
         let mode_ptr: *mut c_int = &mut mode;
@@ -218,7 +221,7 @@ fn prctl_get_flag_arg2(option: PrctlOption) -> Result<bool, uint> {
     Ok(mode > 0)
 }
 
-fn prctl_get_result(option: PrctlOption) -> Result<c_int, uint> {
+fn prctl_get_result(option: PrctlOption) -> Result<c_int, usize> {
     let res = unsafe {
         prctl(option as c_int, 0, 0, 0, 0)
     };
@@ -226,12 +229,12 @@ fn prctl_get_result(option: PrctlOption) -> Result<c_int, uint> {
     Ok(res)
 }
 
-fn prctl_get_flag(option: PrctlOption) -> Result<bool, uint> {
+fn prctl_get_flag(option: PrctlOption) -> Result<bool, usize> {
     let res = try!(prctl_get_result(option));
     Ok(res > 0)
 }
 
-fn prctl_send_arg2(option: PrctlOption, arg2: c_ulong) -> Result<(), uint> {
+fn prctl_send_arg2(option: PrctlOption, arg2: c_ulong) -> Result<(), usize> {
     let res = unsafe {
         prctl(option as c_int, arg2, 0, 0, 0)
     };
@@ -239,7 +242,7 @@ fn prctl_send_arg2(option: PrctlOption, arg2: c_ulong) -> Result<(), uint> {
     Ok(())
 }
 
-fn prctl_send_arg3(option: PrctlOption, arg2: c_ulong, arg3: c_ulong) -> Result<(), uint> {
+fn prctl_send_arg3(option: PrctlOption, arg2: c_ulong, arg3: c_ulong) -> Result<(), usize> {
     let res = unsafe {
         prctl(option as c_int, arg2, arg3, 0, 0)
     };
@@ -247,11 +250,11 @@ fn prctl_send_arg3(option: PrctlOption, arg2: c_ulong, arg3: c_ulong) -> Result<
     Ok(())
 }
 
-fn prctl_set_flag(option: PrctlOption, val: bool) -> Result<(), uint> {
+fn prctl_set_flag(option: PrctlOption, val: bool) -> Result<(), usize> {
     prctl_send_arg2(option, val as c_ulong)
 }
 
-fn prctl_get_enum<E: FromPrimitive>(option: PrctlOption) -> Result<E, uint> {
+fn prctl_get_enum<E: FromPrimitive>(option: PrctlOption) -> Result<E, usize> {
     let (res, mode) = unsafe {
         let mut mode: c_int = 0;
         let mode_ptr: *mut c_int = &mut mode;
@@ -259,17 +262,17 @@ fn prctl_get_enum<E: FromPrimitive>(option: PrctlOption) -> Result<E, uint> {
         (r, mode)
     };
     handle_errno!(res);
-    let mode_enum = FromPrimitive::from_int(mode as int).unwrap();
+    let mode_enum = FromPrimitive::from_int(mode as isize).unwrap();
     Ok(mode_enum)
 }
 
-fn prctl_get_enum_value<E: FromPrimitive>(option: PrctlOption) -> Result<E, uint> {
+fn prctl_get_enum_value<E: FromPrimitive>(option: PrctlOption) -> Result<E, usize> {
     let res = try!(prctl_get_result(option));
-    let mode_enum = FromPrimitive::from_int(res as int).unwrap();
+    let mode_enum = FromPrimitive::from_int(res as isize).unwrap();
     Ok(mode_enum)
 }
 
-fn prctl_set_enum(option: PrctlOption, mode: c_ulong) -> Result<(), uint> {
+fn prctl_set_enum(option: PrctlOption, mode: c_ulong) -> Result<(), usize> {
     let res = unsafe {
         prctl(option as c_int, mode, 0, 0, 0)
     };
@@ -277,7 +280,7 @@ fn prctl_set_enum(option: PrctlOption, mode: c_ulong) -> Result<(), uint> {
     Ok(())
 }
 
-pub fn get_death_signal() -> Result<int, uint> {
+pub fn get_death_signal() -> Result<isize, usize> {
     let (res, sig) = unsafe {
         let mut sig: c_int = 0;
         let sig_ptr: *mut c_int = &mut sig;
@@ -285,10 +288,10 @@ pub fn get_death_signal() -> Result<int, uint> {
         (r, sig)
     };
     handle_errno!(res);
-    Ok(sig as int)
+    Ok(sig as isize)
 }
 
-pub fn set_death_signal(signal: int) -> Result<(), uint> {
+pub fn set_death_signal(signal: isize) -> Result<(), usize> {
     let res = unsafe {
         prctl(PrctlOption::PR_SET_PDEATHSIG as c_int, signal as c_ulong, 0, 0, 0)
     };
@@ -296,132 +299,133 @@ pub fn set_death_signal(signal: int) -> Result<(), uint> {
     Ok(())
 }
 
-pub fn get_dumpable() -> Result<bool, uint> {
+pub fn get_dumpable() -> Result<bool, usize> {
     prctl_get_flag(PrctlOption::PR_GET_DUMPABLE)
 }
 
-pub fn set_dumpable(dumpable: bool) -> Result<(), uint> {
+pub fn set_dumpable(dumpable: bool) -> Result<(), usize> {
     prctl_set_flag(PrctlOption::PR_SET_DUMPABLE, dumpable)
 }
 
-pub fn get_name() -> Result<String, uint> {
+pub fn get_name() -> Result<CString, usize> {
     let (res, name) = unsafe {
         // 16 characters in the name, but null terminate just in case
         // only 15 characters can be set anyway, contrary to prctl doc
         // https://bugzilla.kernel.org/show_bug.cgi?id=11764
-        let mut name: Vec<u8> = Vec::with_capacity(17);
-        name.set_len(17);
+        let mut name = [0 as u8; 17];
         let res = prctl(PrctlOption::PR_GET_NAME as c_int, name.as_mut_ptr() as c_ulong, 0, 0, 0);
-        name[16] = 0;
-        (res, String::from_raw_buf(name.as_ptr()))
+        // buffer is one bigger than result - there will be one
+        let nul_pos = name.position_elem(&0).unwrap();
+        let name_slice = name.as_slice();
+        (res, CString::from_slice(name_slice.slice_to(nul_pos)))
     };
     handle_errno!(res);
     Ok(name)
 }
 
-pub fn set_name(name: &str) -> Result<(), uint> {
+pub fn set_name(name: &str) -> Result<(), usize> {
     let res = unsafe {
-        let cname = name.to_c_str();
+        let cname = CString::from_slice(name.as_bytes());
         prctl(PrctlOption::PR_SET_NAME as c_int, cname.as_ptr() as c_ulong, 0, 0, 0)
     };
     handle_errno!(res);
     Ok(())
 }
 
-pub fn set_no_new_privileges(new_privileges: bool) -> Result<(), uint> {
+pub fn set_no_new_privileges(new_privileges: bool) -> Result<(), usize> {
     prctl_set_flag(PrctlOption::PR_SET_NO_NEW_PRIVS, new_privileges)
 }
 
-pub fn get_no_new_privileges() -> Result<bool, uint> {
+pub fn get_no_new_privileges() -> Result<bool, usize> {
     prctl_get_flag(PrctlOption::PR_GET_NO_NEW_PRIVS)
 }
 
-pub fn set_unaligned_access(mode: PrctlUnalign) -> Result<(), uint> {
+pub fn set_unaligned_access(mode: PrctlUnalign) -> Result<(), usize> {
     prctl_set_enum(PrctlOption::PR_SET_UNALIGN, mode as c_ulong)
 }
 
-pub fn get_unaligned_access() -> Result<PrctlUnalign, uint> {
+pub fn get_unaligned_access() -> Result<PrctlUnalign, usize> {
     prctl_get_enum(PrctlOption::PR_GET_UNALIGN)
 }
 
-pub fn set_keep_capabilities(keep_capabilities: bool) -> Result<(), uint> {
+pub fn set_keep_capabilities(keep_capabilities: bool) -> Result<(), usize> {
     prctl_set_flag(PrctlOption::PR_SET_KEEPCAPS, keep_capabilities)
 }
 
-pub fn get_keep_capabilities() -> Result<bool, uint> {
+pub fn get_keep_capabilities() -> Result<bool, usize> {
     prctl_get_flag(PrctlOption::PR_GET_KEEPCAPS)
 }
 
-pub fn get_fpemu() -> Result<PrctlFpemu, uint> {
+pub fn get_fpemu() -> Result<PrctlFpemu, usize> {
     prctl_get_enum(PrctlOption::PR_GET_FPEMU)
 }
 
-pub fn set_fpemu(mode: PrctlFpemu) -> Result<(), uint> {
+pub fn set_fpemu(mode: PrctlFpemu) -> Result<(), usize> {
     prctl_set_enum(PrctlOption::PR_SET_FPEMU, mode as c_ulong)
 }
 
-pub fn get_timing() -> Result<PrctlTiming, uint> {
+pub fn get_timing() -> Result<PrctlTiming, usize> {
     prctl_get_enum_value(PrctlOption::PR_GET_TIMING)
 }
 
-pub fn set_timing(timing: PrctlTiming) -> Result<(), uint> {
+pub fn set_timing(timing: PrctlTiming) -> Result<(), usize> {
     prctl_set_enum(PrctlOption::PR_SET_TIMING, timing as c_ulong)
 }
 
-pub fn get_endian() -> Result<PrctlEndian, uint> {
+pub fn get_endian() -> Result<PrctlEndian, usize> {
     prctl_get_enum(PrctlOption::PR_GET_ENDIAN)
 }
 
-pub fn set_endian(endian: PrctlEndian) -> Result<(), uint> {
+pub fn set_endian(endian: PrctlEndian) -> Result<(), usize> {
     prctl_set_enum(PrctlOption::PR_SET_ENDIAN, endian as c_ulong)
 }
 
-pub fn get_seccomp() -> Result<PrctlSeccomp, uint> {
+pub fn get_seccomp() -> Result<PrctlSeccomp, usize> {
     prctl_get_enum_value(PrctlOption::PR_GET_SECCOMP)
 }
 
-pub fn set_seccomp_strict() -> Result<(), uint> {
+pub fn set_seccomp_strict() -> Result<(), usize> {
     prctl_set_enum(PrctlOption::PR_SET_SECCOMP, PrctlSeccomp::SECCOMP_MODE_STRICT as c_ulong)
 }
 
 // TODO
-//pub fn set_seccomp_filter(...) -> Result<(), uint> {
+//pub fn set_seccomp_filter(...) -> Result<(), usize> {
 // ...
 //}
 
-pub fn get_tsc() -> Result<PrctlTsc, uint> {
+pub fn get_tsc() -> Result<PrctlTsc, usize> {
     prctl_get_enum(PrctlOption::PR_GET_TSC)
 }
 
-pub fn set_tsc(mode: PrctlTsc) -> Result<(), uint> {
+pub fn set_tsc(mode: PrctlTsc) -> Result<(), usize> {
     prctl_set_enum(PrctlOption::PR_SET_TSC, mode as c_ulong)
 }
 
-pub fn disable_perf_events() -> Result<(), uint> {
+pub fn disable_perf_events() -> Result<(), usize> {
     prctl_call(PrctlOption::PR_TASK_PERF_EVENTS_DISABLE)
 }
 
-pub fn enable_perf_events() -> Result<(), uint> {
+pub fn enable_perf_events() -> Result<(), usize> {
     prctl_call(PrctlOption::PR_TASK_PERF_EVENTS_ENABLE)
 }
 
-pub fn get_child_subreaper() -> Result<bool, uint> {
+pub fn get_child_subreaper() -> Result<bool, usize> {
     prctl_get_flag_arg2(PrctlOption::PR_GET_CHILD_SUBREAPER)
 }
 
-pub fn set_child_subreaper(subreaper: bool) -> Result<(), uint> {
+pub fn set_child_subreaper(subreaper: bool) -> Result<(), usize> {
     prctl_set_flag(PrctlOption::PR_SET_CHILD_SUBREAPER, subreaper)
 }
 
-pub fn get_thp_disable() -> Result<bool, uint> {
+pub fn get_thp_disable() -> Result<bool, usize> {
     prctl_get_flag(PrctlOption::PR_GET_THP_DISABLE)
 }
 
-pub fn set_thp_disable(disable: bool) -> Result<(), uint> {
+pub fn set_thp_disable(disable: bool) -> Result<(), usize> {
     prctl_set_flag(PrctlOption::PR_SET_THP_DISABLE, disable)
 }
 
-pub fn read_capability(cap: PrctlCap) -> Result<bool, uint> {
+pub fn read_capability(cap: PrctlCap) -> Result<bool, usize> {
     let res = unsafe {
         prctl(PrctlOption::PR_CAPBSET_READ as c_int, cap as c_ulong, 0, 0, 0)
     };
@@ -429,11 +433,11 @@ pub fn read_capability(cap: PrctlCap) -> Result<bool, uint> {
     Ok(res > 0)
 }
 
-pub fn drop_capability(cap: PrctlCap) -> Result<(), uint> {
+pub fn drop_capability(cap: PrctlCap) -> Result<(), usize> {
     prctl_send_arg2(PrctlOption::PR_CAPBSET_DROP, cap as c_ulong)
 }
 
-pub fn set_securebits(bits: Vec<PrctlSecurebits>) -> Result<(), uint> {
+pub fn set_securebits(bits: Vec<PrctlSecurebits>) -> Result<(), usize> {
     let mut mask = 0 as c_ulong;
     for bit in bits.iter() {
         mask |= *bit as c_ulong;
@@ -442,7 +446,7 @@ pub fn set_securebits(bits: Vec<PrctlSecurebits>) -> Result<(), uint> {
     prctl_send_arg2(PrctlOption::PR_SET_SECUREBITS, mask as c_ulong)
 }
 
-pub fn get_securebits() -> Result<Vec<PrctlSecurebits>, uint> {
+pub fn get_securebits() -> Result<Vec<PrctlSecurebits>, usize> {
     let res = try!(prctl_get_result(PrctlOption::PR_GET_SECUREBITS));
     let mut bits: Vec<PrctlSecurebits> = Vec::new();
     for bit in vec!(
@@ -457,29 +461,29 @@ pub fn get_securebits() -> Result<Vec<PrctlSecurebits>, uint> {
     Ok(bits)
 }
 
-pub fn get_timer_slack() -> Result<uint, uint> {
+pub fn get_timer_slack() -> Result<usize, usize> {
     let res = try!(prctl_get_result(PrctlOption::PR_GET_TIMERSLACK));
     // res is already not negative - erros were negative
-    Ok(res as uint)
+    Ok(res as usize)
 }
 
-pub fn set_timer_slack(slack: uint) -> Result<(), uint> {
+pub fn set_timer_slack(slack: usize) -> Result<(), usize> {
     prctl_send_arg2(PrctlOption::PR_SET_TIMERSLACK, slack as c_ulong)
 }
 
-pub fn clear_mce_kill() -> Result<(), uint> {
+pub fn clear_mce_kill() -> Result<(), usize> {
     prctl_send_arg2(PrctlOption::PR_MCE_KILL, 0)
 }
 
-pub fn set_mce_kill(policy: PrctlMceKill) -> Result<(), uint> {
+pub fn set_mce_kill(policy: PrctlMceKill) -> Result<(), usize> {
     prctl_send_arg3(PrctlOption::PR_MCE_KILL, 1, policy as c_ulong)
 }
 
-pub fn get_mce_kill() -> Result<PrctlMceKill, uint> {
+pub fn get_mce_kill() -> Result<PrctlMceKill, usize> {
     prctl_get_enum_value(PrctlOption::PR_MCE_KILL_GET)
 }
 
-pub fn set_mm(setting: PrctlMM, value: c_ulong) -> Result<(), uint> {
+pub fn set_mm(setting: PrctlMM, value: c_ulong) -> Result<(), usize> {
     prctl_send_arg3(PrctlOption::PR_SET_MM, setting as c_ulong, value)
 }
 
@@ -507,10 +511,10 @@ fn check_death_signal() {
 fn check_name() {
     let old = get_name().unwrap();
     assert_eq!(Ok(()), set_name("fake"));
-    assert_eq!("fake", get_name().unwrap().as_slice());
+    assert_eq!("fake", get_name().unwrap().container_as_str().unwrap());
     assert_eq!(Ok(()), set_name("veryveryverylon"));
-    assert_eq!("veryveryverylon", get_name().unwrap().as_slice());
-    assert_eq!(Ok(()), set_name(old.as_slice()));
+    assert_eq!("veryveryverylon", get_name().unwrap().container_as_str().unwrap());
+    assert_eq!(Ok(()), set_name(old.container_as_str().unwrap()));
 }
 
 #[test]
