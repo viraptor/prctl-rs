@@ -74,28 +74,28 @@ enum PrctlOption {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Debug,Copy)]
 pub enum PrctlUnalign {
     PR_UNALIGN_NOPRINT = 1,
     PR_UNALIGN_SIGBUS = 2,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Debug,Copy)]
 pub enum PrctlFpemu {
     PR_FPEMU_NOPRINT = 1,
     PR_FPEMU_SIGFPE = 2,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Debug,Copy)]
 pub enum PrctlTiming {
     PR_TIMING_STATISTICAL = 0,
     PR_TIMING_TIMESTAMP = 1,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Debug,Copy)]
 pub enum PrctlEndian {
     PR_ENDIAN_BIG = 0,
     PR_ENDIAN_LITTLE = 1,
@@ -103,7 +103,7 @@ pub enum PrctlEndian {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Debug,Copy)]
 pub enum PrctlSeccomp {
     SECCOMP_MODE_DISABLED = 0,
     SECCOMP_MODE_STRICT = 1,
@@ -111,14 +111,14 @@ pub enum PrctlSeccomp {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Debug,Copy)]
 pub enum PrctlTsc {
     PR_TSC_ENABLE = 1,
     PR_TSC_SIGSEGV = 2,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Show,Copy)]
+#[derive(FromPrimitive,PartialEq,Debug,Copy)]
 pub enum PrctlMceKill {
     PR_MCE_KILL_LATE    = 0,
     PR_MCE_KILL_EARLY   = 1,
@@ -169,7 +169,7 @@ pub enum PrctlCap {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq,Show,Copy)]
+#[derive(PartialEq,Debug,Copy)]
 pub enum PrctlSecurebits {
     SECBIT_NOROOT                 = 0x01,
     SECBIT_NOROOT_LOCKED          = 0x02,
@@ -180,7 +180,7 @@ pub enum PrctlSecurebits {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq,Show,Copy)]
+#[derive(PartialEq,Debug,Copy)]
 pub enum PrctlMM {
     PR_SET_MM_START_CODE  = 1,
     PR_SET_MM_END_CODE    = 2,
