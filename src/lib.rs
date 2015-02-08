@@ -18,7 +18,7 @@ use std::os::errno;
 use std::num::FromPrimitive;
 
 #[cfg(test)]
-use std::path::BytesContainer;
+use std::old_path::BytesContainer;
 
 macro_rules! handle_errno {
     ($res:ident) => ({
