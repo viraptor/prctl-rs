@@ -202,7 +202,7 @@ extern {
     fn prctl(option: c_int, arg2: c_ulong, arg3: c_ulong, arg4: c_ulong, arg5: c_ulong) -> c_int;
 }
 
-fn prctl_call(option: PrctlOption) -> Result<(), usize> {
+fn prctl_call(option: PrctlOption) -> Result<(), i32> {
     let res = unsafe {
         prctl(option as c_int, 0, 0, 0, 0)
     };
@@ -210,7 +210,7 @@ fn prctl_call(option: PrctlOption) -> Result<(), usize> {
     Ok(())
 }
 
-fn prctl_get_flag_arg2(option: PrctlOption) -> Result<bool, usize> {
+fn prctl_get_flag_arg2(option: PrctlOption) -> Result<bool, i32> {
     let (res, mode) = unsafe {
         let mut mode: c_int = 0;
         let mode_ptr: *mut c_int = &mut mode;
@@ -221,7 +221,7 @@ fn prctl_get_flag_arg2(option: PrctlOption) -> Result<bool, usize> {
     Ok(mode > 0)
 }
 
-fn prctl_get_result(option: PrctlOption) -> Result<c_int, usize> {
+fn prctl_get_result(option: PrctlOption) -> Result<c_int, i32> {
     let res = unsafe {
         prctl(option as c_int, 0, 0, 0, 0)
     };
@@ -229,12 +229,12 @@ fn prctl_get_result(option: PrctlOption) -> Result<c_int, usize> {
     Ok(res)
 }
 
-fn prctl_get_flag(option: PrctlOption) -> Result<bool, usize> {
+fn prctl_get_flag(option: PrctlOption) -> Result<bool, i32> {
     let res = try!(prctl_get_result(option));
     Ok(res > 0)
 }
 
-fn prctl_send_arg2(option: PrctlOption, arg2: c_ulong) -> Result<(), usize> {
+fn prctl_send_arg2(option: PrctlOption, arg2: c_ulong) -> Result<(), i32> {
     let res = unsafe {
         prctl(option as c_int, arg2, 0, 0, 0)
     };
@@ -242,7 +242,7 @@ fn prctl_send_arg2(option: PrctlOption, arg2: c_ulong) -> Result<(), usize> {
     Ok(())
 }
 
-fn prctl_send_arg3(option: PrctlOption, arg2: c_ulong, arg3: c_ulong) -> Result<(), usize> {
+fn prctl_send_arg3(option: PrctlOption, arg2: c_ulong, arg3: c_ulong) -> Result<(), i32> {
     let res = unsafe {
         prctl(option as c_int, arg2, arg3, 0, 0)
     };
@@ -250,11 +250,11 @@ fn prctl_send_arg3(option: PrctlOption, arg2: c_ulong, arg3: c_ulong) -> Result<
     Ok(())
 }
 
-fn prctl_set_flag(option: PrctlOption, val: bool) -> Result<(), usize> {
+fn prctl_set_flag(option: PrctlOption, val: bool) -> Result<(), i32> {
     prctl_send_arg2(option, val as c_ulong)
 }
 
-fn prctl_get_enum<E: FromPrimitive>(option: PrctlOption) -> Result<E, usize> {
+fn prctl_get_enum<E: FromPrimitive>(option: PrctlOption) -> Result<E, i32> {
     let (res, mode) = unsafe {
         let mut mode: c_int = 0;
         let mode_ptr: *mut c_int = &mut mode;
@@ -266,13 +266,13 @@ fn prctl_get_enum<E: FromPrimitive>(option: PrctlOption) -> Result<E, usize> {
     Ok(mode_enum)
 }
 
-fn prctl_get_enum_value<E: FromPrimitive>(option: PrctlOption) -> Result<E, usize> {
+fn prctl_get_enum_value<E: FromPrimitive>(option: PrctlOption) -> Result<E, i32> {
     let res = try!(prctl_get_result(option));
     let mode_enum = FromPrimitive::from_int(res as isize).unwrap();
     Ok(mode_enum)
 }
 
-fn prctl_set_enum(option: PrctlOption, mode: c_ulong) -> Result<(), usize> {
+fn prctl_set_enum(option: PrctlOption, mode: c_ulong) -> Result<(), i32> {
     let res = unsafe {
         prctl(option as c_int, mode, 0, 0, 0)
     };
@@ -280,7 +280,7 @@ fn prctl_set_enum(option: PrctlOption, mode: c_ulong) -> Result<(), usize> {
     Ok(())
 }
 
-pub fn get_death_signal() -> Result<isize, usize> {
+pub fn get_death_signal() -> Result<isize, i32> {
     let (res, sig) = unsafe {
         let mut sig: c_int = 0;
         let sig_ptr: *mut c_int = &mut sig;
@@ -291,7 +291,7 @@ pub fn get_death_signal() -> Result<isize, usize> {
     Ok(sig as isize)
 }
 
-pub fn set_death_signal(signal: isize) -> Result<(), usize> {
+pub fn set_death_signal(signal: isize) -> Result<(), i32> {
     let res = unsafe {
         prctl(PrctlOption::PR_SET_PDEATHSIG as c_int, signal as c_ulong, 0, 0, 0)
     };
@@ -299,15 +299,15 @@ pub fn set_death_signal(signal: isize) -> Result<(), usize> {
     Ok(())
 }
 
-pub fn get_dumpable() -> Result<bool, usize> {
+pub fn get_dumpable() -> Result<bool, i32> {
     prctl_get_flag(PrctlOption::PR_GET_DUMPABLE)
 }
 
-pub fn set_dumpable(dumpable: bool) -> Result<(), usize> {
+pub fn set_dumpable(dumpable: bool) -> Result<(), i32> {
     prctl_set_flag(PrctlOption::PR_SET_DUMPABLE, dumpable)
 }
 
-pub fn get_name() -> Result<CString, usize> {
+pub fn get_name() -> Result<CString, i32> {
     let (res, name) = unsafe {
         // 16 characters in the name, but null terminate just in case
         // only 15 characters can be set anyway, contrary to prctl doc
@@ -323,7 +323,7 @@ pub fn get_name() -> Result<CString, usize> {
     Ok(name)
 }
 
-pub fn set_name(name: &str) -> Result<(), usize> {
+pub fn set_name(name: &str) -> Result<(), i32> {
     let res = unsafe {
         let cname = CString::from_slice(name.as_bytes());
         prctl(PrctlOption::PR_SET_NAME as c_int, cname.as_ptr() as c_ulong, 0, 0, 0)
@@ -332,100 +332,100 @@ pub fn set_name(name: &str) -> Result<(), usize> {
     Ok(())
 }
 
-pub fn set_no_new_privileges(new_privileges: bool) -> Result<(), usize> {
+pub fn set_no_new_privileges(new_privileges: bool) -> Result<(), i32> {
     prctl_set_flag(PrctlOption::PR_SET_NO_NEW_PRIVS, new_privileges)
 }
 
-pub fn get_no_new_privileges() -> Result<bool, usize> {
+pub fn get_no_new_privileges() -> Result<bool, i32> {
     prctl_get_flag(PrctlOption::PR_GET_NO_NEW_PRIVS)
 }
 
-pub fn set_unaligned_access(mode: PrctlUnalign) -> Result<(), usize> {
+pub fn set_unaligned_access(mode: PrctlUnalign) -> Result<(), i32> {
     prctl_set_enum(PrctlOption::PR_SET_UNALIGN, mode as c_ulong)
 }
 
-pub fn get_unaligned_access() -> Result<PrctlUnalign, usize> {
+pub fn get_unaligned_access() -> Result<PrctlUnalign, i32> {
     prctl_get_enum(PrctlOption::PR_GET_UNALIGN)
 }
 
-pub fn set_keep_capabilities(keep_capabilities: bool) -> Result<(), usize> {
+pub fn set_keep_capabilities(keep_capabilities: bool) -> Result<(), i32> {
     prctl_set_flag(PrctlOption::PR_SET_KEEPCAPS, keep_capabilities)
 }
 
-pub fn get_keep_capabilities() -> Result<bool, usize> {
+pub fn get_keep_capabilities() -> Result<bool, i32> {
     prctl_get_flag(PrctlOption::PR_GET_KEEPCAPS)
 }
 
-pub fn get_fpemu() -> Result<PrctlFpemu, usize> {
+pub fn get_fpemu() -> Result<PrctlFpemu, i32> {
     prctl_get_enum(PrctlOption::PR_GET_FPEMU)
 }
 
-pub fn set_fpemu(mode: PrctlFpemu) -> Result<(), usize> {
+pub fn set_fpemu(mode: PrctlFpemu) -> Result<(), i32> {
     prctl_set_enum(PrctlOption::PR_SET_FPEMU, mode as c_ulong)
 }
 
-pub fn get_timing() -> Result<PrctlTiming, usize> {
+pub fn get_timing() -> Result<PrctlTiming, i32> {
     prctl_get_enum_value(PrctlOption::PR_GET_TIMING)
 }
 
-pub fn set_timing(timing: PrctlTiming) -> Result<(), usize> {
+pub fn set_timing(timing: PrctlTiming) -> Result<(), i32> {
     prctl_set_enum(PrctlOption::PR_SET_TIMING, timing as c_ulong)
 }
 
-pub fn get_endian() -> Result<PrctlEndian, usize> {
+pub fn get_endian() -> Result<PrctlEndian, i32> {
     prctl_get_enum(PrctlOption::PR_GET_ENDIAN)
 }
 
-pub fn set_endian(endian: PrctlEndian) -> Result<(), usize> {
+pub fn set_endian(endian: PrctlEndian) -> Result<(), i32> {
     prctl_set_enum(PrctlOption::PR_SET_ENDIAN, endian as c_ulong)
 }
 
-pub fn get_seccomp() -> Result<PrctlSeccomp, usize> {
+pub fn get_seccomp() -> Result<PrctlSeccomp, i32> {
     prctl_get_enum_value(PrctlOption::PR_GET_SECCOMP)
 }
 
-pub fn set_seccomp_strict() -> Result<(), usize> {
+pub fn set_seccomp_strict() -> Result<(), i32> {
     prctl_set_enum(PrctlOption::PR_SET_SECCOMP, PrctlSeccomp::SECCOMP_MODE_STRICT as c_ulong)
 }
 
 // TODO
-//pub fn set_seccomp_filter(...) -> Result<(), usize> {
+//pub fn set_seccomp_filter(...) -> Result<(), i32> {
 // ...
 //}
 
-pub fn get_tsc() -> Result<PrctlTsc, usize> {
+pub fn get_tsc() -> Result<PrctlTsc, i32> {
     prctl_get_enum(PrctlOption::PR_GET_TSC)
 }
 
-pub fn set_tsc(mode: PrctlTsc) -> Result<(), usize> {
+pub fn set_tsc(mode: PrctlTsc) -> Result<(), i32> {
     prctl_set_enum(PrctlOption::PR_SET_TSC, mode as c_ulong)
 }
 
-pub fn disable_perf_events() -> Result<(), usize> {
+pub fn disable_perf_events() -> Result<(), i32> {
     prctl_call(PrctlOption::PR_TASK_PERF_EVENTS_DISABLE)
 }
 
-pub fn enable_perf_events() -> Result<(), usize> {
+pub fn enable_perf_events() -> Result<(), i32> {
     prctl_call(PrctlOption::PR_TASK_PERF_EVENTS_ENABLE)
 }
 
-pub fn get_child_subreaper() -> Result<bool, usize> {
+pub fn get_child_subreaper() -> Result<bool, i32> {
     prctl_get_flag_arg2(PrctlOption::PR_GET_CHILD_SUBREAPER)
 }
 
-pub fn set_child_subreaper(subreaper: bool) -> Result<(), usize> {
+pub fn set_child_subreaper(subreaper: bool) -> Result<(), i32> {
     prctl_set_flag(PrctlOption::PR_SET_CHILD_SUBREAPER, subreaper)
 }
 
-pub fn get_thp_disable() -> Result<bool, usize> {
+pub fn get_thp_disable() -> Result<bool, i32> {
     prctl_get_flag(PrctlOption::PR_GET_THP_DISABLE)
 }
 
-pub fn set_thp_disable(disable: bool) -> Result<(), usize> {
+pub fn set_thp_disable(disable: bool) -> Result<(), i32> {
     prctl_set_flag(PrctlOption::PR_SET_THP_DISABLE, disable)
 }
 
-pub fn read_capability(cap: PrctlCap) -> Result<bool, usize> {
+pub fn read_capability(cap: PrctlCap) -> Result<bool, i32> {
     let res = unsafe {
         prctl(PrctlOption::PR_CAPBSET_READ as c_int, cap as c_ulong, 0, 0, 0)
     };
@@ -433,11 +433,11 @@ pub fn read_capability(cap: PrctlCap) -> Result<bool, usize> {
     Ok(res > 0)
 }
 
-pub fn drop_capability(cap: PrctlCap) -> Result<(), usize> {
+pub fn drop_capability(cap: PrctlCap) -> Result<(), i32> {
     prctl_send_arg2(PrctlOption::PR_CAPBSET_DROP, cap as c_ulong)
 }
 
-pub fn set_securebits(bits: Vec<PrctlSecurebits>) -> Result<(), usize> {
+pub fn set_securebits(bits: Vec<PrctlSecurebits>) -> Result<(), i32> {
     let mut mask = 0 as c_ulong;
     for bit in bits.iter() {
         mask |= *bit as c_ulong;
@@ -446,7 +446,7 @@ pub fn set_securebits(bits: Vec<PrctlSecurebits>) -> Result<(), usize> {
     prctl_send_arg2(PrctlOption::PR_SET_SECUREBITS, mask as c_ulong)
 }
 
-pub fn get_securebits() -> Result<Vec<PrctlSecurebits>, usize> {
+pub fn get_securebits() -> Result<Vec<PrctlSecurebits>, i32> {
     let res = try!(prctl_get_result(PrctlOption::PR_GET_SECUREBITS));
     let mut bits: Vec<PrctlSecurebits> = Vec::new();
     for bit in vec!(
@@ -461,29 +461,29 @@ pub fn get_securebits() -> Result<Vec<PrctlSecurebits>, usize> {
     Ok(bits)
 }
 
-pub fn get_timer_slack() -> Result<usize, usize> {
+pub fn get_timer_slack() -> Result<usize, i32> {
     let res = try!(prctl_get_result(PrctlOption::PR_GET_TIMERSLACK));
     // res is already not negative - erros were negative
     Ok(res as usize)
 }
 
-pub fn set_timer_slack(slack: usize) -> Result<(), usize> {
+pub fn set_timer_slack(slack: usize) -> Result<(), i32> {
     prctl_send_arg2(PrctlOption::PR_SET_TIMERSLACK, slack as c_ulong)
 }
 
-pub fn clear_mce_kill() -> Result<(), usize> {
+pub fn clear_mce_kill() -> Result<(), i32> {
     prctl_send_arg2(PrctlOption::PR_MCE_KILL, 0)
 }
 
-pub fn set_mce_kill(policy: PrctlMceKill) -> Result<(), usize> {
+pub fn set_mce_kill(policy: PrctlMceKill) -> Result<(), i32> {
     prctl_send_arg3(PrctlOption::PR_MCE_KILL, 1, policy as c_ulong)
 }
 
-pub fn get_mce_kill() -> Result<PrctlMceKill, usize> {
+pub fn get_mce_kill() -> Result<PrctlMceKill, i32> {
     prctl_get_enum_value(PrctlOption::PR_MCE_KILL_GET)
 }
 
-pub fn set_mm(setting: PrctlMM, value: c_ulong) -> Result<(), usize> {
+pub fn set_mm(setting: PrctlMM, value: c_ulong) -> Result<(), i32> {
     prctl_send_arg3(PrctlOption::PR_SET_MM, setting as c_ulong, value)
 }
 
