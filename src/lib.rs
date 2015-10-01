@@ -1,4 +1,5 @@
 #![cfg(target_os="linux")]
+#![feature(core,core_slice_ext,fixed_size_array)]
 
 //! Module provides safe abstraction over the prctl interface.
 //! Provided functions map to a single `prctl()` call, although some of them
@@ -12,10 +13,16 @@
 //! To run tests requiring root privileges, enable feature "root_test".
 
 extern crate libc;
+extern crate nix;
+extern crate core;
+#[macro_use] extern crate enum_primitive;
+
 use libc::{c_int, c_ulong};
 use std::ffi::CString;
-use std::os::errno;
-use std::num::FromPrimitive;
+use nix::errno::errno;
+use enum_primitive::FromPrimitive;
+use core::slice::SliceExt;
+use core::array::FixedSizeArray;
 
 #[cfg(test)]
 use std::old_path::BytesContainer;
@@ -73,60 +80,74 @@ enum PrctlOption {
 //  PR_SET_FPEXC = 12,
 }
 
+enum_from_primitive! {
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlUnalign {
     PR_UNALIGN_NOPRINT = 1,
     PR_UNALIGN_SIGBUS = 2,
 }
+}
 
+enum_from_primitive! {
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlFpemu {
     PR_FPEMU_NOPRINT = 1,
     PR_FPEMU_SIGFPE = 2,
 }
+}
 
+enum_from_primitive! {
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlTiming {
     PR_TIMING_STATISTICAL = 0,
     PR_TIMING_TIMESTAMP = 1,
 }
+}
 
+enum_from_primitive! {
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlEndian {
     PR_ENDIAN_BIG = 0,
     PR_ENDIAN_LITTLE = 1,
     PR_ENDIAN_PPC_LITTLE = 2,
 }
+}
 
+enum_from_primitive! {
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlSeccomp {
     SECCOMP_MODE_DISABLED = 0,
     SECCOMP_MODE_STRICT = 1,
     SECCOMP_MODE_FILTER = 2,
 }
+}
 
+enum_from_primitive! {
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlTsc {
     PR_TSC_ENABLE = 1,
     PR_TSC_SIGSEGV = 2,
 }
+}
 
+enum_from_primitive! {
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlMceKill {
     PR_MCE_KILL_LATE    = 0,
     PR_MCE_KILL_EARLY   = 1,
     PR_MCE_KILL_DEFAULT = 2,
 }
+}
 
 #[allow(non_camel_case_types)]
-#[derive(Copy)]
+#[derive(Copy,Clone)]
 pub enum PrctlCap {
     CAP_CHOWN            = 0,
     CAP_DAC_OVERRIDE     = 1,
@@ -169,7 +190,7 @@ pub enum PrctlCap {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlSecurebits {
     SECBIT_NOROOT                 = 0x01,
     SECBIT_NOROOT_LOCKED          = 0x02,
@@ -180,7 +201,7 @@ pub enum PrctlSecurebits {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlMM {
     PR_SET_MM_START_CODE  = 1,
     PR_SET_MM_END_CODE    = 2,
@@ -262,13 +283,13 @@ fn prctl_get_enum<E: FromPrimitive>(option: PrctlOption) -> Result<E, i32> {
         (r, mode)
     };
     handle_errno!(res);
-    let mode_enum = FromPrimitive::from_int(mode as isize).unwrap();
+    let mode_enum = FromPrimitive::from_isize(mode as isize).unwrap();
     Ok(mode_enum)
 }
 
 fn prctl_get_enum_value<E: FromPrimitive>(option: PrctlOption) -> Result<E, i32> {
     let res = try!(prctl_get_result(option));
-    let mode_enum = FromPrimitive::from_int(res as isize).unwrap();
+    let mode_enum = FromPrimitive::from_isize(res as isize).unwrap();
     Ok(mode_enum)
 }
 
@@ -316,8 +337,8 @@ pub fn get_name() -> Result<CString, i32> {
         let res = prctl(PrctlOption::PR_GET_NAME as c_int, name.as_mut_ptr() as c_ulong, 0, 0, 0);
         // buffer is one bigger than result - there will be one
         let nul_pos = name.position_elem(&0).unwrap();
-        let name_slice = name.as_slice();
-        (res, CString::from_slice(name_slice.slice_to(nul_pos)))
+        let (name_slice, _) = name.as_slice().split_at(nul_pos);
+        (res, CString::new(name_slice).unwrap())
     };
     handle_errno!(res);
     Ok(name)
@@ -325,7 +346,7 @@ pub fn get_name() -> Result<CString, i32> {
 
 pub fn set_name(name: &str) -> Result<(), i32> {
     let res = unsafe {
-        let cname = CString::from_slice(name.as_bytes());
+        let cname = CString::new(name.as_bytes()).unwrap();
         prctl(PrctlOption::PR_SET_NAME as c_int, cname.as_ptr() as c_ulong, 0, 0, 0)
     };
     handle_errno!(res);
