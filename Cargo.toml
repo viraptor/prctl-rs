@@ -20,3 +20,7 @@ not_travis = []
 [lib]
 name = "prctl"
 doctest = false
+
+[dependencies]
+nix = "*"
+libc = "*"

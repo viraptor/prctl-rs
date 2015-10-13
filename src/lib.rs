@@ -12,13 +12,11 @@
 //! To run tests requiring root privileges, enable feature "root_test".
 
 extern crate libc;
+extern crate nix;
 use libc::{c_int, c_ulong};
 use std::ffi::CString;
-use std::os::errno;
-use std::num::FromPrimitive;
-
-#[cfg(test)]
-use std::old_path::BytesContainer;
+use std::mem;
+use nix::errno::errno;
 
 macro_rules! handle_errno {
     ($res:ident) => ({
@@ -74,28 +72,32 @@ enum PrctlOption {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
+#[repr(i32)]
 pub enum PrctlUnalign {
     PR_UNALIGN_NOPRINT = 1,
     PR_UNALIGN_SIGBUS = 2,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
+#[repr(i32)]
 pub enum PrctlFpemu {
     PR_FPEMU_NOPRINT = 1,
     PR_FPEMU_SIGFPE = 2,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
+#[repr(i32)]
 pub enum PrctlTiming {
     PR_TIMING_STATISTICAL = 0,
     PR_TIMING_TIMESTAMP = 1,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
+#[repr(i32)]
 pub enum PrctlEndian {
     PR_ENDIAN_BIG = 0,
     PR_ENDIAN_LITTLE = 1,
@@ -103,7 +105,8 @@ pub enum PrctlEndian {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
+#[repr(i32)]
 pub enum PrctlSeccomp {
     SECCOMP_MODE_DISABLED = 0,
     SECCOMP_MODE_STRICT = 1,
@@ -111,14 +114,16 @@ pub enum PrctlSeccomp {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
+#[repr(i32)]
 pub enum PrctlTsc {
     PR_TSC_ENABLE = 1,
     PR_TSC_SIGSEGV = 2,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromPrimitive,PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
+#[repr(i32)]
 pub enum PrctlMceKill {
     PR_MCE_KILL_LATE    = 0,
     PR_MCE_KILL_EARLY   = 1,
@@ -126,7 +131,7 @@ pub enum PrctlMceKill {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Copy)]
+#[derive(Copy,Clone)]
 pub enum PrctlCap {
     CAP_CHOWN            = 0,
     CAP_DAC_OVERRIDE     = 1,
@@ -169,7 +174,7 @@ pub enum PrctlCap {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlSecurebits {
     SECBIT_NOROOT                 = 0x01,
     SECBIT_NOROOT_LOCKED          = 0x02,
@@ -180,7 +185,7 @@ pub enum PrctlSecurebits {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq,Debug,Copy)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum PrctlMM {
     PR_SET_MM_START_CODE  = 1,
     PR_SET_MM_END_CODE    = 2,
@@ -196,6 +201,29 @@ pub enum PrctlMM {
     PR_SET_MM_AUXV        = 12,
     PR_SET_MM_EXE_FILE    = 13,
 }
+
+trait FromCInt {
+    fn from_c_int(c_int) -> Self;
+}
+// Transmuting should be safe here since the layout is well defined (i32). This
+// will of course work only on linux/glibc since it assumes that rust's type
+// c_int == i32. Which is ok at the moment.
+macro_rules! impl_from_c_int {
+    ($en:ty) => (
+        impl FromCInt for $en {
+            fn from_c_int(val: c_int) -> $en {
+                unsafe { mem::transmute(val as i32) }
+            }
+        }
+    )
+}
+impl_from_c_int!(PrctlEndian);
+impl_from_c_int!(PrctlFpemu);
+impl_from_c_int!(PrctlMceKill);
+impl_from_c_int!(PrctlSeccomp);
+impl_from_c_int!(PrctlTiming);
+impl_from_c_int!(PrctlTsc);
+impl_from_c_int!(PrctlUnalign);
 
 #[link(name="c")]
 extern {
@@ -254,7 +282,7 @@ fn prctl_set_flag(option: PrctlOption, val: bool) -> Result<(), i32> {
     prctl_send_arg2(option, val as c_ulong)
 }
 
-fn prctl_get_enum<E: FromPrimitive>(option: PrctlOption) -> Result<E, i32> {
+fn prctl_get_enum<E: FromCInt>(option: PrctlOption) -> Result<E, i32> {
     let (res, mode) = unsafe {
         let mut mode: c_int = 0;
         let mode_ptr: *mut c_int = &mut mode;
@@ -262,13 +290,13 @@ fn prctl_get_enum<E: FromPrimitive>(option: PrctlOption) -> Result<E, i32> {
         (r, mode)
     };
     handle_errno!(res);
-    let mode_enum = FromPrimitive::from_int(mode as isize).unwrap();
+    let mode_enum = FromCInt::from_c_int(mode);
     Ok(mode_enum)
 }
 
-fn prctl_get_enum_value<E: FromPrimitive>(option: PrctlOption) -> Result<E, i32> {
+fn prctl_get_enum_value<E: FromCInt>(option: PrctlOption) -> Result<E, i32> {
     let res = try!(prctl_get_result(option));
-    let mode_enum = FromPrimitive::from_int(res as isize).unwrap();
+    let mode_enum = FromCInt::from_c_int(res);
     Ok(mode_enum)
 }
 
@@ -315,9 +343,9 @@ pub fn get_name() -> Result<CString, i32> {
         let mut name = [0 as u8; 17];
         let res = prctl(PrctlOption::PR_GET_NAME as c_int, name.as_mut_ptr() as c_ulong, 0, 0, 0);
         // buffer is one bigger than result - there will be one
-        let nul_pos = name.position_elem(&0).unwrap();
-        let name_slice = name.as_slice();
-        (res, CString::from_slice(name_slice.slice_to(nul_pos)))
+        let nul_pos = name.iter().position(|x| *x == 0).unwrap();
+        let name_slice = &name[0 .. nul_pos];
+        (res, CString::new(name_slice).unwrap())
     };
     handle_errno!(res);
     Ok(name)
@@ -325,7 +353,7 @@ pub fn get_name() -> Result<CString, i32> {
 
 pub fn set_name(name: &str) -> Result<(), i32> {
     let res = unsafe {
-        let cname = CString::from_slice(name.as_bytes());
+        let cname = CString::new(name).unwrap();
         prctl(PrctlOption::PR_SET_NAME as c_int, cname.as_ptr() as c_ulong, 0, 0, 0)
     };
     handle_errno!(res);
@@ -511,10 +539,10 @@ fn check_death_signal() {
 fn check_name() {
     let old = get_name().unwrap();
     assert_eq!(Ok(()), set_name("fake"));
-    assert_eq!("fake", get_name().unwrap().container_as_str().unwrap());
+    assert_eq!("fake", String::from_utf8_lossy(get_name().unwrap().to_bytes()));
     assert_eq!(Ok(()), set_name("veryveryverylon"));
-    assert_eq!("veryveryverylon", get_name().unwrap().container_as_str().unwrap());
-    assert_eq!(Ok(()), set_name(old.container_as_str().unwrap()));
+    assert_eq!("veryveryverylon", String::from_utf8_lossy(get_name().unwrap().to_bytes()));
+    assert_eq!(Ok(()), set_name(&String::from_utf8_lossy(old.to_bytes())));
 }
 
 #[test]
