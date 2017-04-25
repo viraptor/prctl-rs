@@ -37,4 +37,4 @@ use prctl::PrctlTsc;
 License
 =======
 
-Licensed under [MIT license](MIT license).
+Licensed under [MIT license](LICENSE).
