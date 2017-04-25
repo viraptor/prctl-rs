@@ -33,3 +33,8 @@ let slack = !try(prctl::get_timer_slack());
 use prctl::PrctlTsc;
 !try(prctl::set_tsc(PrctlTsc::PR_TSC_SIGSEGV));
 ```
+
+License
+=======
+
+Licensed under [MIT license](MIT license).
