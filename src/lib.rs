@@ -225,7 +225,6 @@ impl_from_c_int!(PrctlTiming);
 impl_from_c_int!(PrctlTsc);
 impl_from_c_int!(PrctlUnalign);
 
-#[link(name="c")]
 extern {
     fn prctl(option: c_int, arg2: c_ulong, arg3: c_ulong, arg4: c_ulong, arg5: c_ulong) -> c_int;
 }
