@@ -22,5 +22,5 @@ name = "prctl"
 doctest = false
 
 [dependencies]
-nix = "*"
+nix = { version = "*", default-features = false }
 libc = "*"
